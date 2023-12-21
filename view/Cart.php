@@ -91,10 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                     class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
                     <a href="Cart.php">Cart</a>
                 </li>
-                <li
+                <!-- <li
                     class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
                     <a href="blog.php">Blog</a>
-                </li>
+                </li> -->
                 
             </ul>
         </nav>
