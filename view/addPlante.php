@@ -1,59 +1,39 @@
 <?php
-include 'session.php';
+require_once "../model/model.php";
 
-// Check user session and retrieve the role
-$userRole = checkUserSession($mysqli);
+$session = new Session(); 
+$categorie = new Categorie();
+$plant = new Plant();
+
+$userRole = $session->checkUserSession();
 
 // Redirect based on user role
 if ($userRole === 'blocked') {
-    header("Location: block-page.php");
+    header("Location: ./block-page.php");
     exit();
 }
 if ($userRole !== 'admin') {
-    header("Location: SingIn.php");
+    header("Location: ./SingIn.php");
+    exit();
 }
 
-// Fetch categories data from the database
-$query = "SELECT * FROM categorie"; // Replace 'categories' with your table name
-$result = $mysqli->query($query);
-$categories = $result->fetch_all(MYSQLI_ASSOC);
+$categories = $categorie->getCategories();
+
 
 // Handling form submission to add a plant
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // Retrieve form data
     $plantName = $_POST['name'];
     $plantPrice = $_POST['price'];
-    $categoryId = $_POST['category']; // Assuming 'category' is your category select field
+    $categoryId = $_POST['category'];
+    $uploadedImage = $_FILES['image'];
 
-    // Handle image upload
-    $uploadDir = 'uploads/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true); 
-    }
-    $uploadedImage = $_FILES['image']; // Retrieve uploaded file information
-    $imageName = $uploadedImage['name']; // Get the name of the uploaded file
-    $imageTempName = $uploadedImage['tmp_name']; // Get the temporary file name
-
-    // Check if a file was uploaded
-    if (!empty($imageName)) {
-        // Generate a unique name for the uploaded image to avoid conflicts
-        $imagePath = $uploadDir . uniqid() . '_' . $imageName;
-
-        // Move the uploaded file to the specified directory
-        if (move_uploaded_file($imageTempName, $imagePath)) {
-            // File uploaded successfully, proceed to insert plant data into the database
-            $insertQuery = "INSERT INTO Plant (Name, price, CategorieId, image) VALUES (?, ?, ?, ?)";
-            $insertStmt = $mysqli->prepare($insertQuery);
-            $insertStmt->bind_param('ssss', $plantName, $plantPrice, $categoryId, $imagePath);
-
-            if ($insertStmt->execute()) {
-                // Redirect or display success message
-                header("Location: dashboard.php");
-                exit();
-            }
-        }
-    }
+    $plant->setPlantName($plantName);
+    $plant->setPlantPrice($plantPrice);
+    $plant->setCategoryID($categoryId);
+    $plant->setPlantIMG($uploadedImage);
+    $plant->addPlant();
 }
+
 ?>
 
 
@@ -96,8 +76,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <select name="category" class="w-full p-2 rounded-md bg-white text-black">
                         <option value="">Select Category</option>
                         <?php foreach ($categories as $category) : ?>
-                        <option value="<?php echo $category['IdCategorie']; ?>">
-                            <?php echo $category['CategorieName']; ?></option>
+                        <option value="<?php echo $category->getCategorieId() ?>">
+                            <?php echo $category->getCategorieName() ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

@@ -1,134 +1,77 @@
 <?php
-include 'session.php';
 
-// Check user session and retrieve the role
-$userRole = checkUserSession($mysqli);
+require_once "../model/model.php";
+
+$session = new Session(); 
+$user = new User();
+$categorie = new Categorie();
+$plant = new Plant();
+$cart = new Cart();
+
+
+$userRole = $session->checkUserSession();
 
 // Redirect based on user role
 if ($userRole === 'blocked') {
-    header("Location: block-page.php");
+    header("Location: ./block-page.php");
     exit();
 }
 if ($userRole !== 'client') {
-    header("Location: SingIn.php");
+    header("Location: ./SingIn.php");
+    exit();
+}
+
+if (isset($_POST['logout'])) {
+
+    $user->logout();
 }
 
 if (isset($_SESSION['user_email'])) {
     $userEmail = $_SESSION['user_email'];
 
-    $query = "SELECT IdUser FROM user WHERE Email = ?";
-    $statement = $mysqli->prepare($query);
-    $statement->bind_param('s', $userEmail);
-    $statement->execute();
-    // Fetch the user ID
-    $result = $statement->get_result();
-
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $userId = $row['IdUser'];
-    }
+    $userId = $user->getUserIdFromEmail($userEmail); 
 }
 
-function fetchCategories($mysqli) {
-    $query = "SELECT * FROM categorie";
-    $result = $mysqli->query($query);
-    return $result->fetch_all(MYSQLI_ASSOC);
-}
-$categories = fetchCategories($mysqli);
+$categories = $categorie->getCategories();
 
-function fetchPlantsByCategory($mysqli, $selectedCategory) {
-    // Initialize an empty array to store plant data
-    $plants = [];
 
-    // Build the query with the selected category condition
-    $query = "SELECT * FROM plant";
 
-    if ($selectedCategory !== 'all') {
-        $query .= " WHERE CategorieId = ?";
-    }
 
-    // Prepare the query
-    $stmt = $mysqli->prepare($query);
-
-    if ($selectedCategory !== 'all') {
-        $stmt->bind_param('i', $selectedCategory);
-    }
-
-    // Execute the query and fetch data
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $plants = $result->fetch_all(MYSQLI_ASSOC);
-
-    return $plants;
-}
-
-// Fetch plant data based on the entered plant name
-function fetchPlantsByName($mysqli, $plantName) {
-    // Initialize an empty array to store plant data
-    $plants = [];
-
-    // Build the query with the plant name condition
-    $query = "SELECT * FROM plant";
- 
-    if (!empty($plantName)) {
-        $query .= " WHERE Name LIKE ?";
-    }
-
-    // Prepare the query
-    $stmt = $mysqli->prepare($query);
-
-    if (!empty($plantName)) {
-        $plantNameParam = "%$plantName%";
-        $stmt->bind_param('s', $plantNameParam);
-    }
-
-    // Execute the query and fetch data
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $plants = $result->fetch_all(MYSQLI_ASSOC);
-
-    return $plants;
-}
-
-$plants = [];
-
-// Handle form submission for filtering by category
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['searchByCategory'])) {
     $selectedCategory = $_POST['categorie'] ?? 'all';
-    $plants = fetchPlantsByCategory($mysqli, $selectedCategory);
+    if ($selectedCategory !== 'all') {
+        $plants = $plant->fetchPlantsByCategory($selectedCategory);
+    } else {
+        // If 'all' category selected, retrieve all plants
+        $plants = $plant->getAllPlants();
+    }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['searchByName'])) {
     $plantName = $_POST['PlantName'] ?? '';
-    $plants = fetchPlantsByName($mysqli, $plantName);
+    $plants = $plant->fetchPlantsByName($plantName);
 } else {
-    try {
-        $result = $mysqli->query("SELECT * FROM plant");
-        $plants = $result->fetch_all(MYSQLI_ASSOC);
-    } catch (Exception $e) {
-        echo "Error: " . $e->getMessage();
+    // If no specific filter, fetch all plants
+    $plants = $plant->getAllPlants();
+}
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addToCart'])) {
+    $plantId = $_POST['PlantId'];
+    $userId = $_POST['UserId'];
+$cart->set_userID( $userId);
+$cart->set_plantID( $plantId);
+    $success = $cart->addToCart();
+
+    if ($success) {
+        header("Location: plants.php");
+        exit();
+    } else {
+        echo "Failed to add item to cart.";
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['addToCart'])) {
-    // Get the values from the form
-    $plantId = $_POST['PlantId'];
-    $userId = $_POST['UserId'];
 
-    // Prepare and execute the SQL INSERT statement
-    $stmt = $mysqli->prepare("INSERT INTO cart (PlantId, UserId) VALUES (?, ?)");
-    $stmt->bind_param('ii', $plantId, $userId);
-    $stmt->execute();
+$cartCount = $cart->getCartCount($userId);
 
-    // Redirect to the previous page or another location after adding to cart
-    header("Location: plants.php");
-    exit();
-}
-
-$countQuery = "SELECT COUNT(*) AS cartCount FROM cart WHERE UserId = ?";
-$countStatement = $mysqli->prepare($countQuery);
-$countStatement->bind_param('i', $userId);
-$countStatement->execute();
-$result = $countStatement->get_result();
-$cartCount = $result->fetch_assoc()['cartCount'] ?? 0;
 ?>
 
 
@@ -170,11 +113,11 @@ $cartCount = $result->fetch_assoc()['cartCount'] ?? 0;
                     class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
                     <a href="Cart.php">Cart</a>
                 </li>
-                <li
+                <!-- <li
                     class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
                     <a href="blog.php">Blog</a>
-                </li>
-                
+                </li> -->
+
             </ul>
         </nav>
 
@@ -235,8 +178,8 @@ $cartCount = $result->fetch_assoc()['cartCount'] ?? 0;
             <select name="categorie" class="w-full p-2 rounded-md bg-white text-black">
                 <option value="all">ALL</option>
                 <?php foreach ($categories as $categorie) : ?>
-                <option value="<?php echo $categorie['IdCategorie']; ?>">
-                    <?php echo $categorie['CategorieName']; ?>
+                <option value="<?php echo $categorie->getCategorieId() ?>">
+                    <?php echo $categorie->getCategorieName() ?>
                 </option>
                 <?php endforeach; ?>
 
@@ -258,19 +201,19 @@ $cartCount = $result->fetch_assoc()['cartCount'] ?? 0;
             <div class="relative flex items-center justify-center px-10 pt-10">
                 <div class="absolute bottom-0 left-0 block w-48 h-48 ml-3 -mb-24">
                 </div>
-                <img class="relative w-40 h-[200px]" src="<?php echo $plant['image']; ?>" alt="Plant Image" />
+                <img class="relative w-40 h-[200px]" src="<?php echo $plant->getPlantIMG() ?>" alt="Plant Image" />
             </div>
             <div class="relative px-6 pb-6 mt-6 text-white">
                 <div class="flex justify-between">
                     <span class="block text-xl font-semibold">
-                        <?php echo $plant['Name']; ?>
+                        <?php echo $plant->getPlantName() ?>
                     </span>
                     <form action="" method="post">
-                        <input type="hidden" name="PlantId" value="<?php echo $plant['IdPlant']; ?>">
+                        <input type="hidden" name="PlantId" value="<?php echo $plant->getPlantId() ?>">
                         <input type="hidden" name="UserId" value="<?php echo $userId; ?>">
                         <button type="submit" name="addToCart"
                             class="flex items-center cursor-pointer px-3 py-2 text-xs font-bold leading-none text-purple-500 bg-white rounded-full hover:bg-purple-200 duration-500">
-                            <?php echo $plant['price']; ?> DH
+                            <?php echo $plant->getPlantPrice() ?> DH
                         </button>
                     </form>
                 </div>
@@ -286,21 +229,21 @@ $cartCount = $result->fetch_assoc()['cartCount'] ?? 0;
     <footer class="bg-white">
         <div class="max-w-screen-xl px-4 py-12 mx-auto space-y-8 overflow-hidden sm:px-6 lg:px-8">
             <nav class="flex flex-wrap justify-center -mx-5 -my-2">
-            <ul class="flex items-center">
-                <li
-                    class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer active">
-                    <a href="index.php">Home</a>
-                </li>
-                <li
-                    class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
-                    <a href="Plants.php">Plants</a>
-                </li>
-                <li
-                    class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
-                    <a href="Cart.php">Cart</a>
-                </li>
+                <ul class="flex items-center">
+                    <li
+                        class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer active">
+                        <a href="index.php">Home</a>
+                    </li>
+                    <li
+                        class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
+                        <a href="Plants.php">Plants</a>
+                    </li>
+                    <li
+                        class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
+                        <a href="Cart.php">Cart</a>
+                    </li>
 
-            </ul>
+                </ul>
 
             </nav>
             <div class="flex justify-center mt-8 space-x-6">

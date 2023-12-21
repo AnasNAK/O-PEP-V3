@@ -12,17 +12,17 @@ if ($userRole === 'blocked') {
     header("Location: ./block-page.php");
     exit();
 }
-if ($userRole !== 'client') {
+if ($userRole !== 'admin') {
     header("Location: ./SingIn.php");
     exit();
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-  
     $categoryName = $_POST['name'];
-
-    $categorie->addCategory($categoryName);
+    $categorie->setCategorieName($categoryName);
+    $categorie->addCategory(); 
 }
+
 ?>
 
 

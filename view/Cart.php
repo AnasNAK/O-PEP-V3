@@ -1,102 +1,54 @@
 <?php
 
-require_once './Session.php'; 
+require_once "../model/model.php";
 
 $session = new Session(); 
+$user = new User();
+$categorie = new Categorie();
+$plant = new Plant();
+$cart = new Cart();
 
 
 $userRole = $session->checkUserSession();
 
-// Redirect based on user role
 if ($userRole === 'blocked') {
-    header("Location: block-page.php");
+    header("Location: ./block-page.php");
     exit();
 }
 if ($userRole !== 'client') {
-    header("Location: SignIn.php");
+    header("Location: ./SingIn.php");
     exit();
 }
 
-// Fetch user ID using email from session
-$userEmail = $_SESSION['user_email'];
+if (isset($_POST['logout'])) {
 
-$stmt = $mysqli->prepare("SELECT IdUser FROM user WHERE email = ?");
-$stmt->bind_param('s', $userEmail);
-$stmt->execute();
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
-$userId = $user['IdUser'];
+    $user->logout();
+}
 
-// Calculate total price using SQL
-$stmt = $mysqli->prepare("
-    SELECT SUM(plant.price) AS total_price
-    FROM cart
-    JOIN plant ON cart.PlantId = plant.IdPlant
-    WHERE cart.UserId = ?");
-$stmt->bind_param('i', $userId);
-$stmt->execute();
-$totalPriceResult = $stmt->get_result();
-$totalPrice = $totalPriceResult->fetch_assoc()['total_price'];
+if (isset($_SESSION['user_email'])) {
+    $userEmail = $_SESSION['user_email'];
 
-// Fetch cart items
-$stmt = $mysqli->prepare("
-    SELECT plant.IdPlant AS plant_id, plant.Name AS plant_name, plant.price AS plant_price , plant.image AS plant_image
-    FROM cart
-    JOIN plant ON cart.PlantId = plant.IdPlant
-    WHERE cart.UserId = ?");
-$stmt->bind_param('i', $userId);
-$stmt->execute();
-$cartItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $userId = $user->getUserIdFromEmail($userEmail); 
+}
+
+
+$totalPrice = $cart->calculateTotalPrice($userId);
+
+
+$cartItems = $cart->fetchCartItems($userId);
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deletePlant'])) {
-    $idplant = $_POST['idplant'];
-
-    // Proceed to delete the category after handling related records in the plant table
-    $deleteQuery = "DELETE FROM cart WHERE PlantId = ?";
-    $deleteStmt = $mysqli->prepare($deleteQuery);
-    $deleteStmt->bind_param('i', $idplant);
-
-    if ($deleteStmt->execute()) {
-        // After successful deletion, redirect or perform other actions
-        header("Location: cart.php");
-        exit();
-    } else {
-        echo "Error deleting plant.";
-    }
+    $plantId = $_POST['idplant'];
+    $cart->deletePlantFromCart($plantId);
 }
 
-$countQuery = "SELECT COUNT(*) AS cartCount FROM cart WHERE UserId = ?";
-$countStatement = $mysqli->prepare($countQuery);
-$countStatement->bind_param('i', $userId);
-$countStatement->execute();
-$cartCount = $countStatement->get_result()->fetch_assoc()['cartCount'] ?? 0;
+$cartCount = $cart->getCartCount($userId);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
-    // Insert into the 'commands' table
-    $insertCommandQuery = "INSERT INTO command (UserId, PlantId, TotalPrice) VALUES (?, ?, ?)";
-    $insertCommandStmt = $mysqli->prepare($insertCommandQuery);
 
-    // Retrieve cart items again to get plant IDs and insert each item into the commands table
-    $stmt = $mysqli->prepare("SELECT PlantId FROM cart WHERE UserId = ?");
-    $stmt->bind_param('i', $userId);
-    $stmt->execute();
-    $plantIds = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-    foreach ($plantIds as $plantId) {
-        $insertCommandStmt->bind_param('iii', $userId, $plantId['PlantId'], $totalPrice);
-        $insertCommandStmt->execute();
-    }
-
-    // Delete cart items after successful checkout
-    $deleteCartQuery = "DELETE FROM cart WHERE UserId = ?";
-    $deleteCartStmt = $mysqli->prepare($deleteCartQuery);
-    $deleteCartStmt->bind_param('i', $userId);
-    $deleteCartStmt->execute();
-
-    // Redirect after successful checkout
-    header("Location: success.php");
-    // echo "<script>displaySuccessMessage();</script>";
-    exit();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) { 
+    
+    $cart->checkout($userId);
 }
 ?>
 
@@ -251,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
 
                                                         <form action="" method="POST">
                                                             <input type="hidden" name="idplant"
-                                                                value="<?php echo $cartItem['plant_id']; ?>">
+                                                                value="<?php echo $cartItem['IdCart']; ?>">
                                                             <button type="submit" name="deletePlant"
                                                                 class="text-red-500 hover:text-red-600">
 

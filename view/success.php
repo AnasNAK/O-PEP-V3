@@ -1,16 +1,19 @@
 <?php
-include 'session.php';
+require_once "../model/model.php";
 
-// Check user session and retrieve the role
-$userRole = checkUserSession($mysqli);
+$session = new Session(); 
+
+
+$userRole = $session->checkUserSession();
 
 // Redirect based on user role
 if ($userRole === 'blocked') {
-    header("Location: block-page.php");
+    header("Location: ./block-page.php");
     exit();
 }
 if ($userRole !== 'client') {
-    header("Location: SingIn.php");
+    header("Location: ./SingIn.php");
+    exit();
 }
 
 

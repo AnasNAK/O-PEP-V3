@@ -7,63 +7,50 @@ $categorie = new Categorie();
 
 $userRole = $session->checkUserSession();
 
-// Redirect based on user role
 if ($userRole === 'blocked') {
     header("Location: ./block-page.php");
     exit();
 }
-if ($userRole !== 'client') {
+if ($userRole !== 'admin') {
     header("Location: ./SingIn.php");
     exit();
 }
 
-
 if ($_SERVER["REQUEST_METHOD"] === "GET" && isset($_GET['IdCategorie'])) {
     $categoryId = $_GET['IdCategorie'];
 
-    // Query to fetch category details from the database
-    $query = "SELECT * FROM categorie WHERE IdCategorie = ?";
-    $stmt = $mysqli->prepare($query);
-    $stmt->bind_param('i', $categoryId);
-    $stmt->execute();
+    $isFetched = $categorie->getCategoryById($categoryId);
 
-    // Fetch category details
-    $categoryResult = $stmt->get_result();
-    $category = $categoryResult->fetch_assoc();
-
-    // Check if category exists
-    if ($category) {
-        // Assign category details to variables to pre-fill the form fields
-        $categoryId = $category['IdCategorie'];
-        $categoryName = $category['CategorieName'];
-    } else {
-        // Category not found, handle the scenario (redirect, show error, etc.)
-        // For example, redirect to a different page or display an error message
-        header("Location: dashboard.php");
+    if (!$isFetched) {
+    
+        header("Location: ./dashboard.php");
         exit();
     }
+
+    $categoryId = $categorie->getCategorieId();
+    $categoryName = $categorie->getCategorieName();
 }
 
-// Handling form submission to update the category
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $updatedCategoryName = $_POST['catname'];
     $categoryId = $_GET['IdCategorie'];
 
-    // Perform the update query based on the retrieved category ID
-    $query = "UPDATE `categorie` SET CategorieName = ? WHERE IdCategorie = ?";
-    $stmt = $mysqli->prepare($query);
-    $stmt->bind_param('si', $updatedCategoryName, $categoryId);
+    $categorie->setCategorieName($updatedCategoryName);
+    $categorie->setCategorieId($categoryId);
 
-    if ($stmt->execute()) {
+
+    $isUpdated = $categorie->updateCategory();
+
+    if ($isUpdated) {
         echo "Category updated successfully";
+        header("Location: ./dashboard.php");
+        exit();
     } else {
-        echo "Error updating category: " . $stmt->error;
+        echo "Error updating category";
+       
     }
-
-    // Redirect to the dashboard or another appropriate page after the update
-    header("Location: dashboard.php");
-    exit();
 }
+
 ?>
 
 

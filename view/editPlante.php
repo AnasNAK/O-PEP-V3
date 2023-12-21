@@ -1,95 +1,74 @@
 <?php
-include 'session.php';
+require_once "../model/model.php";
 
-// Check user session and retrieve the role
-$userRole = checkUserSession($mysqli);
+$session = new Session(); 
+$categorie = new Categorie();
+$plant = new Plant();
+
+$userRole = $session->checkUserSession();
 
 // Redirect based on user role
 if ($userRole === 'blocked') {
-    header("Location: block-page.php");
+    header("Location: ./block-page.php");
     exit();
 }
 if ($userRole !== 'admin') {
-    header("Location: SingIn.php");
+    header("Location: ./SingIn.php");
+    exit();
 }
 
 // Fetch plant details based on plant ID for editing
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['IdPlant'])) {
     $plantId = $_GET['IdPlant'];
 
-    $query = "SELECT * FROM `plant` WHERE IdPlant = ?";
-    $stmt = $mysqli->prepare($query);
-    $stmt->bind_param('i', $plantId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $plant = $result->fetch_assoc();
+    if ($plant->getPlantDetailsForEditing($plantId)) {
 
-    // Fetch categories data from the database
-    $queryCategories = "SELECT * FROM categorie";
-    $resultCategories = $mysqli->query($queryCategories);
-    $categories = $resultCategories->fetch_all(MYSQLI_ASSOC);
+        $plantName = $plant->getPlantName();
+        $plantPrice = $plant->getPlantPrice();
+        $categoryId = $plant->getCategoryID();
+        $imagePath = $plant->getPlantIMG();
 
-    // Check if a plant with the specified ID exists
-    if ($plant) {
-        $plantName = $plant['Name'];
-        $plantPrice = $plant['price'];
-        $categoryId = $plant['CategorieId'];
-        $imagePath = $plant['image'];
+       
+        $categories = $categorie->getCategories(); 
+
+        
+    } else {
+       
     }
 }
 
-// Handle plant update on form submission
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updatePlant'])) {
-    // Retrieve form data
     $plantId = $_GET['IdPlant'];
     $updatedName = $_POST['name'];
     $updatedPrice = $_POST['price'];
     $updatedCategoryId = $_POST['category'];
-
-    // Image upload handling
-    $uploadDir = 'uploads/';
     $uploadedImage = $_FILES['image'];
 
-    // Check if a new image was uploaded
-    if (!empty($uploadedImage['name'])) {
-        $imageName = $uploadedImage['name'];
-        $imageTempName = $uploadedImage['tmp_name'];
 
-        // Generate a unique name for the uploaded image to avoid conflicts
-        $imagePath = $uploadDir . uniqid() . '_' . $imageName;
 
-        // Move the uploaded file to the specified directory
-        if (move_uploaded_file($imageTempName, $imagePath)) {
-            // Update plant details with the new image path
-            $updateQuery = "UPDATE plant SET `Name` = ?, price = ?, CategorieId = ?, `image` = ? WHERE IdPlant = ?";
-            $updateStmt = $mysqli->prepare($updateQuery);
-            $updateStmt->bind_param('ssisi', $updatedName, $updatedPrice, $updatedCategoryId, $imagePath, $plantId);
+    // Set updated plant details using setters
+    $plant->setPlantId($plantId);
+    $plant->setPlantName($updatedName);
+    $plant->setPlantPrice($updatedPrice);
+    $plant->setCategoryID($updatedCategoryId);
+    $plant->setPlantIMG($uploadedImage);
 
-            if ($updateStmt->execute()) {
-                // Redirect or display success message
-                header("Location: dashboard.php");
-                exit();
-            } else {
-                echo "Error updating plant.";
-            }
-        } else {
-            echo "Failed to upload the image.";
-        }
+    // Update plant details
+    $success = $plant->updatePlant();
+
+    if ($success) {
+        // Redirect to dashboard or display success message
+        header("Location: dashboard.php");
+        exit();
     } else {
-        // No new image uploaded, update other plant details without changing the image
-        $updateQuery = "UPDATE plant SET `Name` = ?, price = ?, CategorieId = ? WHERE IdPlant = ?";
-        $updateStmt = $mysqli->prepare($updateQuery);
-        $updateStmt->bind_param('ssii', $updatedName, $updatedPrice, $updatedCategoryId, $plantId);
-
-        if ($updateStmt->execute()) {
-            // Redirect or display success message
-            header("Location: dashboard.php");
-            exit();
-        } else {
-            echo "Error updating plant.";
-        }
+        // Handle error scenario or display an error message
+        echo "Failed to update plant.";
     }
 }
+
+
 ?>
 
 
@@ -164,9 +143,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['updatePlant'])) {
                         <option value="">Select Category</option>
 
                         <?php foreach ($categories as $category) : ?>
-                        <option value="<?php echo $category['IdCategorie']; ?>"
-                            <?php echo ($category['IdCategorie'] == $categoryId) ? 'selected' : ''; ?>>
-                            <?php echo $category['CategorieName']; ?>
+                        <option value="<?php echo $category->getCategorieId() ?>"
+                            <?php echo ($category->getCategorieId() == $categoryId) ? 'selected' : ''; ?>>
+                            <?php echo $category->getCategorieName() ?>
                         </option>
                         <?php endforeach; ?>
                     </select>

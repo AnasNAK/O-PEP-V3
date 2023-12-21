@@ -3,6 +3,7 @@
 require_once "../model/model.php";
 
 $session = new Session(); 
+$user = new User();
 
 
 $userRole = $session->checkUserSession();
@@ -15,6 +16,11 @@ if ($userRole === 'blocked') {
 if ($userRole !== 'client') {
     header("Location: ./SingIn.php");
     exit();
+}
+
+if (isset($_POST['logout'])) {
+
+    $user->logout();
 }
 ?>
 <!DOCTYPE html>
@@ -55,27 +61,29 @@ if ($userRole !== 'client') {
                     class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
                     <a href="Cart.php">Cart</a>
                 </li>
-                <li
+                <!-- <li
                     class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
                     <a href="blog.php">Blog</a>
-                </li>
-                
+                </li> -->
+
             </ul>
         </nav>
 
 
         <div class="w-3/12 flex justify-end gap-5">
-            <a href="../controller/logout.php" class="flex items-center mr-4 hover:text-purple-700 duration-200">
-                <span class="inline-flex mr-1">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
-                        </path>
-                    </svg>
-                </span>
-                Logout
-            </a>
+            <form action="" method="POST">
+                <button type="submit" name="logout" class="flex items-center mr-4 hover:text-blue-100">
+                    <span class="inline-flex mr-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                            </path>
+                        </svg>
+                    </span>
+                    Logout
+                </button>
+            </form>
             <a href="Cart.php">
                 <svg class="h-8 p-1 hover:text-purple-700 duration-200" aria-hidden="true" focusable="false"
                     data-prefix="far" data-icon="shopping-cart" role="img" xmlns="http://www.w3.org/2000/svg"
@@ -330,21 +338,21 @@ if ($userRole !== 'client') {
     <footer class="bg-white">
         <div class="max-w-screen-xl px-4 py-12 mx-auto space-y-8 overflow-hidden sm:px-6 lg:px-8">
             <nav class="flex flex-wrap justify-center -mx-5 -my-2">
-            <ul class="flex items-center">
-                <li
-                    class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer active">
-                    <a href="index.php">Home</a>
-                </li>
-                <li
-                    class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
-                    <a href="Plants.php">Plants</a>
-                </li>
-                <li
-                    class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
-                    <a href="Cart.php">Cart</a>
-                </li>
+                <ul class="flex items-center">
+                    <li
+                        class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer active">
+                        <a href="index.php">Home</a>
+                    </li>
+                    <li
+                        class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
+                        <a href="Plants.php">Plants</a>
+                    </li>
+                    <li
+                        class="p-4 border-b-2 border-purple-700  border-opacity-0 hover:border-opacity-100 hover:text-purple-700  duration-200 cursor-pointer">
+                        <a href="Cart.php">Cart</a>
+                    </li>
 
-            </ul>
+                </ul>
 
             </nav>
             <div class="flex justify-center mt-8 space-x-6">
